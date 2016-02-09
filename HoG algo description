@@ -1,0 +1,27 @@
+HoG Algorithm step wise explanation
+%% Histogram of Oriented Gradients (HOG) are feature descriptors used in computer vision and image
+processing for the purpose of object detection.
+
+Algorithm:
+Step 1 :Read the image and perform necessary pre processing steps.
+Resize image to 64 X 128 size.
+Step 2 :Find image gradient magnitude and orientation.
+Step 3 :Partition the magnitude and orientation matrices into 16 x 16
+blocks.
+Step 4 :Each 16 X 16 block is again partitioned into four 8 X 8 cells.
+Step 5 :Corresponding to each cell created, perform histogram binning.
+Each histogram consists of 9 bins of width 20 degrees.
+Step 6 :Corresponding to each orientation value, the magnitude of that
+pixel is scaled by appropriate factors and put to 2 adjacent bins
+in the histogram.
+Step 7 :Perform histogram normalisation. (This is an optional step).
+Step 8 :Histogram bins corresponding to all the cells in the image are
+concatenated. This forms the feature vector for that particular
+image.
+Step 9 :Repeat the same for the set of images in the training images
+folder. Save all the feature vectors.
+Step 10:Train a Support Vector Machine (SVM), using this data. Test with
+the same set and find empirical error, which must turn out to be
+zero.
+Step 11:Now that the SVM has been trained, test it using any number of
+images to detect the presence/absence of humans in them.
