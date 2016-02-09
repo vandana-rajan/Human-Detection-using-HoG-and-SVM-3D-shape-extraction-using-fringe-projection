@@ -1,0 +1,15 @@
+%% Results obtained using the given HoG MATALB code and the mentioned data set
+Result:
+Training data set:
+empirical error: 0
+**************************************************
+Testing data set:
+Number of false classications amongst positive images:67
+Total number of positive images:288
+Percentage error for positive images:23.263888888888889
+Number of false classications amongst negative images:59
+Total number of negative images:300
+Percentage error for negative images:19.666666666666664
+**************************************************
+Overall testing error in percentage:21.428571428571427
+**************************************************
