@@ -1,0 +1,211 @@
+%%HoG main code:Matlab
+clear all; close all; clc;
+%% accessing positive images and sending them to the HOG function
+myFolder = '/home/vandana/Desktop/sem 2/cv lab/cv lab 7-HOG/INRIAPerson/Train/pos';
+filepattern = fullfile(myFolder,'*.png');
+pngFiles = dir(filepattern);
+no_of_pos_png_files = length(pngFiles);
+for k = 1:no_of_pos_png_files
+  baseFileName = pngFiles(k).name;
+  fullFileName = fullfile(myFolder,baseFileName);
+  imageArray = imread(fullFileName);
+  feature_vec_pos(k,:) = HOG(imageArray);
+%figure; imshow(fullFileName);
+end
+%% accessing negative images and sending them to the HOG function
+myFolder = '/home/vandana/Desktop/sem 2/cv lab/cv lab 7-HOG/INRIAPerson/Train/neg';
+filepattern = fullfile(myFolder,'*.png');
+pngFiles = dir(filepattern);
+no_of_neg_png_files = length(pngFiles);
+for k = 1:no_of_neg_png_files
+  baseFileName = pngFiles(k).name;
+  fullFileName = fullfile(myFolder,baseFileName);
+  imageArray = imread(fullFileName);
+  feature_vec_neg(k,:) = HOG(imageArray);
+%figure; imshow(fullFileName);
+end
+feature_vector = vertcat(feature_vec_pos,feature_vec_neg);
+%% svm training and testing
+label(1:no_of_pos_png_files) = 1;
+label(no_of_pos_png_files+1:no_of_pos_png_files+no_of_neg_png_files) = -1;
+svm_train = svmtrain(feature_vector,label');
+% emperical error
+group = svmclassify(svm_train,feature_vector);
+emp_err = numel(find(group~=label'));
+display('empirical error:'); disp(emp_err);
+display('***************************************************');
+%% svm testing using positive images
+myFolder_1 = '/home/vandana/Desktop/sem 2/cv lab/cv lab 7-HOG/INRIAPerson/Test/pos';
+filepattern_1 = fullfile(myFolder_1,'*.png');
+pngFiles_1 = dir(filepattern_1);
+no_of_test_pos_png_files = length(pngFiles_1);
+for k = 1:no_of_test_pos_png_files
+  baseFileName_1 = pngFiles_1(k).name;
+  fullFileName_1 = fullfile(myFolder_1,baseFileName_1);
+  imageArray_1 = imread(fullFileName_1);
+  feature_vec_test_pos(k,:) = HOG(imageArray_1);
+%figure; imshow(fullFileName);
+end
+% error when testing using positive images
+label_pos(1:no_of_test_pos_png_files) = 1;
+group_pos = svmclassify(svm_train,feature_vec_test_pos);
+test_pos_error = numel(find(group_pos~=label_pos'));
+display('Number of false classifications:'); disp(test_pos_error);
+display('Total number of positive images:'); disp(no_of_test_pos_png_files);
+display('Percentage error:');disp((test_pos_error/no_of_test_pos_png_files)*100);
+display('***************************************************');
+%% svm testing using negative images
+myFolder = '/home/vandana/Desktop/sem 2/cv lab/cv lab 7-HOG/INRIAPerson/Test/neg';
+filepattern = fullfile(myFolder,'*.png');
+pngFiles = dir(filepattern);
+no_of_test_neg_png_files = length(pngFiles);
+for k = 1:no_of_test_neg_png_files
+  baseFileName = pngFiles(k).name;
+  fullFileName = fullfile(myFolder,baseFileName);
+  imageArray = imread(fullFileName);
+  feature_vec_test_neg(k,:) = HOG(imageArray);
+%figure; imshow(fullFileName);
+end
+% error when testing using negative images
+label_neg(1:no_of_test_neg_png_files) = -1;
+group_neg = svmclassify(svm_train,feature_vec_test_neg);
+test_neg_error = numel(find(group_neg~=label_neg'));
+display('Number of false classifications:'); disp(test_neg_error);
+display('Total number of negative images:'); disp(no_of_test_neg_png_files);
+display('Percentage error:');disp((test_neg_error/no_of_test_neg_png_files)*100);
+display('***************************************************');
+display('Overall testing error:'); disp(((test_pos_error+test_neg_error)/(no_of_test_pos_png_files+no_of_test_neg_png_files))*100);
+display('***************************************************');
+
+%% HoG function
+function feature_vec = HOG(img)
+%% image reading, resizing to 64 by 128, conversion to double
+%img = imread('image.png');
+img = imresize(img,[64,128]);
+if(size(img,3)>1)
+  img = rgb2gray(img);
+end
+img = double(img);
+% figure('numbertitle','on','name','original image');
+% imshow(img);
+[row col] = size(img);
+%% finding image gradient magnitude and orientation
+[mag orient] = imgradient(img,'prewitt');
+%figure;imshow(mag,[]);
+%figure;imshow(orient,[]);
+orient(isnan(orient))=0;
+mag(isnan(mag))=0;
+orient = (1/2)*imadd(orient,180);
+%% patitioning the image, magnitude and orientation matrices to 16 by 16 blocks
+% initialisations
+num_of_blocks = ((row/8)-1)*((col/8)-1);
+image_part_blocks(1:num_of_blocks,1:16,1:16) = 0;
+mag_part_blocks(1:num_of_blocks,1:16,1:16) = 0;
+orient_part_blocks(1:num_of_blocks,1:16,1:16) = 0;
+ind = 1;
+% partitioning to 16 by 16 blocks
+for i = 1:(row/8)-1
+  for j = 1:(col/8)-1
+    image_part_blocks(ind,1:16,1:16) = img((i-1)*8+1:(i-1)*8+16,(j-1)*8+1:(j-1)*8+16);
+    mag_part_blocks(ind,1:16,1:16) = mag((i-1)*8+1:(i-1)*8+16,(j-1)*8+1:(j-1)*8+16);
+    orient_part_blocks(ind,1:16,1:16) = orient((i-1)*8+1:(i-1)*8+16,(j-1)*8+1:(j-1)*8+16);
+    ind = ind+1;
+  end
+end
+% each 16 by 16 is partitioned into four 8 by 8 cells
+for i = 1:num_of_blocks
+  mat1(1:16,1:16) = image_part_blocks(i,1:16,1:16);
+  mat2(1:16,1:16) = mag_part_blocks(i,1:16,1:16);
+  mat3(1:16,1:16) = orient_part_blocks(i,1:16,1:16);
+  image_block{i,1} = mat1(1:8,1:8);
+  image_block{i,2} = mat1(9:16,1:8);
+  image_block{i,3} = mat1(1:8,9:16);
+  image_block{i,4} = mat1(9:16,9:16);
+  mag_block{i,1} = mat2(1:8,1:8);
+  mag_block{i,2} = mat2(9:16,1:8);
+  mag_block{i,3} = mat2(1:8,9:16);
+  mag_block{i,4} = mat2(9:16,9:16);
+  orient_block{i,1} = mat3(1:8,1:8);
+  orient_block{i,2} = mat3(9:16,1:8);
+  orient_block{i,3} = mat3(1:8,9:16);
+  orient_block{i,4} = mat3(9:16,9:16);
+end
+%% histogram binning
+num_of_hist = ((row/8)-1)*((col/8)-1)*4;
+% multiply the magnitude blocks with a gaussian kernel
+kernel = fspecial('gaussian',[8 8],2);
+for i = 1:num_of_blocks
+  for j = 1:4
+    new_mag_block{i,j} = mag_block{i,j} .* kernel;
+  end
+end
+for i = 1:num_of_blocks
+  for j = 1:4
+    temp_orient = orient_block{i,j};
+    temp_mag = new_mag_block{i,j};
+    temp_hist = zeros(1,9);
+    for k = 1:8
+      for l = 1:8
+        if(temp_orient(k,l)>=10 && temp_orient(k,l)<30)
+          temp_hist(1,2) = temp_hist(1,2)+((temp_orient(k,l)-10)/20)*temp_mag(k,l);
+          temp_hist(1,1) = temp_hist(1,1)+((30-temp_orient(k,l))/20)*temp_mag(k,l);
+        elseif(temp_orient(k,l)>=30 && temp_orient(k,l)<50)
+          temp_hist(1,3) = temp_hist(1,3)+((temp_orient(k,l)-30)/20)*temp_mag(k,l);
+          temp_hist(1,2) = temp_hist(1,2)+((50-temp_orient(k,l))/20)*temp_mag(k,l);
+        elseif(temp_orient(k,l)>=50 && temp_orient(k,l)<70)
+          temp_hist(1,4) = temp_hist(1,4)+((temp_orient(k,l)-50)/20)*temp_mag(k,l);
+          temp_hist(1,3) = temp_hist(1,3)+((70-temp_orient(k,l))/20)*temp_mag(k,l);
+        elseif(temp_orient(k,l)>=70 && temp_orient(k,l)<90)
+          temp_hist(1,5) = temp_hist(1,5)+((temp_orient(k,l)-70)/20)*temp_mag(k,l);
+          temp_hist(1,4) = temp_hist(1,4)+((90-temp_orient(k,l))/20)*temp_mag(k,l);
+        elseif(temp_orient(k,l)>=90 && temp_orient(k,l)<110)
+          temp_hist(1,6) = temp_hist(1,6)+((temp_orient(k,l)-90)/20)*temp_mag(k,l);
+          temp_hist(1,5) = temp_hist(1,5)+((110-temp_orient(k,l))/20)*temp_mag(k,l);
+        elseif(temp_orient(k,l)>=110 && temp_orient(k,l)<130)
+          temp_hist(1,7) = temp_hist(1,7)+((temp_orient(k,l)-110)/20)*temp_mag(k,l);
+          temp_hist(1,6) = temp_hist(1,6)+((130-temp_orient(k,l))/20)*temp_mag(k,l);
+        elseif(temp_orient(k,l)>=130 && temp_orient(k,l)<150)
+          temp_hist(1,8) = temp_hist(1,8)+((temp_orient(k,l)-130)/20)*temp_mag(k,l);
+          temp_hist(1,7) = temp_hist(1,7)+((150-temp_orient(k,l))/20)*temp_mag(k,l);
+        elseif(temp_orient(k,l)>=150 && temp_orient(k,l)<170)
+          temp_hist(1,9) = temp_hist(1,9)+((temp_orient(k,l)-150)/20)*temp_mag(k,l);
+          temp_hist(1,8) = temp_hist(1,8)+((170-temp_orient(k,l))/20)*temp_mag(k,l);
+        elseif(temp_orient(k,l)>=170 && temp_orient(k,l)<=180)
+          temp_hist(1,1) = temp_hist(1,1)+((temp_orient(k,l)-170)/20)*temp_mag(k,l);
+          temp_hist(1,9) = temp_hist(1,9)+((190-temp_orient(k,l))/20)*temp_mag(k,l);
+        elseif(temp_orient(k,l)>=0 && temp_orient(k,l)<10)
+          temp_hist(1,1) = temp_hist(1,1)+((10+temp_orient(k,l))/20)*temp_mag(k,l);
+          temp_hist(1,9) = temp_hist(1,9)+((10-temp_orient(k,l))/20)*temp_mag(k,l);
+        end
+      end
+    end
+    histo{i,j} = temp_hist;
+  end
+end
+% normalisation of histogram
+for i = 1:num_of_blocks
+  for j = 1:4
+    temp_hist = histo{i,j};
+    sum = 0;
+    for m = 1:9
+      sum = sum+temp_hist(m);
+    end
+    temp_hist = temp_hist./(sum +0.01);
+    histo{i,j} = temp_hist;
+  end
+end
+% concatenation of histogram bins
+length_conc_vect = num_of_blocks*4*9;
+feature_vec(1,1:length_conc_vect) = 0;
+k = 1;
+for i = 1:num_of_blocks
+  for j = 1:4
+    temp = histo{i,j};
+    feature_vec(1,k:k+8) = temp;
+    k = k+9;
+  end
+end
+feature_vec(1,1:end) = feature_vec(1,1:end) ./(norm(feature_vec(1,1:end) )+0.01);
+feature_vec(isnan(feature_vec)) = 0;
+feature_vec(feature_vec>0.04) = 0.04;
+end
