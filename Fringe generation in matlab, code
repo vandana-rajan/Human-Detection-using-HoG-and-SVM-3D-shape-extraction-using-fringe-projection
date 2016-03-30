@@ -1,0 +1,19 @@
+clear all; close all; clc;
+%% freq=128
+x=pi/4:pi/2:2*pi; 
+y=repmat((1+sin(x))/2,512,128);
+%% freq = 64
+x=pi/4:pi/2:2*pi; 
+y=repmat((1+sin(x))/2,512,64);
+%% freq = 32
+x=pi/4:pi/2:2*pi; 
+y=repmat((1+sin(x))/2,128,32);
+%%
+figure; imshow(y);imwrite(y,'vert_fringe.png');
+figure; imshow(y');imwrite(y','hori_fringe.png');
+img1 = im2double(imread('vert_fringe.png'));
+img_fft = fftshift(fft2(img1));
+figure;imagesc(log(abs(img_fft)));
+img2 = im2double(imread('hori_fringe.png'));
+img_fft = fftshift(fft2(img2));
+figure;imagesc(log(abs(img_fft)));
